@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0c0a09" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Humor & Sono" />
+  <title>Humor & Sono</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0c0a09; color: #f5f5f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; padding-bottom: 80px; }
+    .container { max-width: 480px; margin: 0 auto; padding: 32px 16px 0; }
+    .eyebrow { font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; color: #a78bfa; margin-bottom: 4px; }
+    h1 { font-size: 24px; font-weight: 300; color: #f5f5f4; margin-bottom: 24px; }
+
+    /* BOTTOM NAV */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(12,10,9,0.95); backdrop-filter: blur(12px); border-top: 1px solid #292524; display: flex; z-index: 50; }
+    .bottom-nav button { flex: 1; padding: 12px 4px 16px; background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #57534e; font-size: 10px; transition: color 0.2s; }
+    .bottom-nav button.active { color: #a78bfa; }
+    .bottom-nav button .nav-icon { font-size: 20px; line-height: 1; }
+
+    /* ALERTS */
+    .alert-banner { background: #2d0a1e; border: 1px solid #9f1239; border-radius: 12px; padding: 16px; margin-bottom: 16px; font-size: 14px; color: #fda4af; }
+    .alert-banner-low { background: #0c1a2e; border: 1px solid #1e3a5f; border-radius: 12px; padding: 16px; margin-bottom: 16px; font-size: 14px; color: #93c5fd; }
+
+    /* FORM */
+    .section { margin-bottom: 24px; }
+    .section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: #a8a29e; margin-bottom: 12px; }
+    .section-box { background: #1c1917; border: 1px solid #292524; border-radius: 12px; padding: 16px; }
+    label, .field-label { display: block; font-size: 13px; color: #d6d3d1; margin-bottom: 4px; }
+    input[type="date"], input[type="time"], input[type="text"], input[type="email"], input[type="password"], textarea { width: 100%; background: #292524; border: 1px solid #3a3633; border-radius: 8px; padding: 8px 12px; color: #f5f5f4; font-size: 14px; outline: none; }
+    input:focus, textarea:focus { border-color: #7c3aed; }
+    textarea { resize: none; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .hours-display { border-radius: 8px; padding: 8px; text-align: center; font-size: 14px; font-weight: 600; border: 1px solid; }
+    .hours-display.empty { background: #292524; border-color: #3a3633; color: #78716c; }
+    .hours-display.filled { background: #2e1065; border-color: #6d28d9; color: #c4b5fd; }
+    .chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .chip { font-size: 12px; padding: 6px 12px; border-radius: 999px; border: 1px solid; cursor: pointer; transition: all 0.2s; background: none; color: #a8a29e; border-color: #3a3633; }
+    .chip.selected { background: #7c3aed; border-color: #6d28d9; color: white; }
+    .option-btn { width: 100%; text-align: left; font-size: 14px; padding: 10px 16px; border-radius: 8px; border: 1px solid; cursor: pointer; transition: all 0.2s; background: none; margin-bottom: 8px; color: #a8a29e; border-color: #3a3633; }
+    .option-btn.selected { background: #7c3aed; border-color: #6d28d9; color: white; }
+    .range-wrap { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
+    input[type="range"] { width: 100%; accent-color: #7c3aed; }
+    .range-labels { display: flex; justify-content: space-between; font-size: 11px; color: #78716c; }
+    .range-value { font-size: 16px; font-weight: 700; text-align: center; }
+    .hint { font-size: 11px; color: #57534e; margin-bottom: 12px; }
+    .toggle-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .toggle { width: 40px; height: 24px; border-radius: 999px; border: none; cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0; }
+    .toggle.off { background: #3a3633; }
+    .toggle.on { background: #7c3aed; }
+    .toggle-thumb { position: absolute; top: 2px; width: 20px; height: 20px; background: white; border-radius: 50%; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+    .toggle.off .toggle-thumb { left: 2px; }
+    .toggle.on .toggle-thumb { left: 18px; }
+    .save-btn { width: 100%; background: #7c3aed; color: white; border: none; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s; margin-top: 8px; }
+    .save-btn:hover { background: #6d28d9; }
+    .save-btn:disabled { background: #44336a; color: #a78bfa; cursor: not-allowed; }
+    .sync-status { font-size: 11px; color: #57534e; text-align: center; margin-top: 8px; min-height: 16px; }
+    .sync-status.ok { color: #34d399; }
+    .sync-status.err { color: #fb7185; }
+
+    /* HISTORY */
+    .history-card { background: #1c1917; border: 1px solid #292524; border-radius: 12px; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: opacity 0.15s; }
+    .history-card:active { opacity: 0.6; }
+    .history-card.alert-high { background: #2d0a1e; border-color: #9f1239; }
+    .history-card.alert-low { background: #0c1a2e; border-color: #1e3a5f; }
+    .history-card.alert-both { background: #1a0a1e; border-color: #6d28d9; }
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .history-date { font-size: 14px; font-weight: 500; color: #e7e5e4; }
+    .history-alert { font-size: 11px; font-weight: 500; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .tag-high { color: #fb7185; }
+    .tag-low { color: #93c5fd; }
+    .history-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 11px; color: #78716c; }
+    .history-notes { font-size: 12px; color: #57534e; margin-top: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .history-chevron { font-size: 12px; color: #57534e; margin-top: 8px; text-align: right; }
+
+    /* DETAIL */
+    .detail-back { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #a78bfa; cursor: pointer; background: none; border: none; margin-bottom: 24px; padding: 0; }
+    .detail-date { font-size: 20px; font-weight: 300; margin-bottom: 4px; }
+    .detail-subtitle { font-size: 11px; color: #57534e; margin-bottom: 24px; }
+    .detail-section { margin-bottom: 20px; }
+    .detail-section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: #a8a29e; margin-bottom: 10px; }
+    .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #292524; font-size: 13px; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-key { color: #78716c; }
+    .detail-val { color: #e7e5e4; font-weight: 500; }
+    .detail-val.high { color: #db2777; }
+    .detail-val.mid { color: #7c3aed; }
+    .detail-val.low { color: #6b7280; }
+    .detail-box { background: #1c1917; border: 1px solid #292524; border-radius: 12px; padding: 14px; }
+    .detail-notes-text { font-size: 14px; color: #a8a29e; line-height: 1.6; }
+    .detail-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .edit-btn { flex: 1; background: #292524; color: #a78bfa; border: 1px solid #3a3633; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .delete-btn { background: #2d0a1e; color: #fb7185; border: 1px solid #9f1239; padding: 12px 16px; border-radius: 12px; font-size: 14px; cursor: pointer; }
+
+    /* AUTH */
+    .auth-title { font-size: 18px; font-weight: 300; margin-bottom: 8px; }
+    .auth-box { background: #1c1917; border: 1px solid #292524; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .auth-error { font-size: 12px; color: #fb7185; margin-top: -8px; display: none; }
+    .auth-switch { font-size: 13px; color: #78716c; text-align: center; }
+    .auth-switch span { color: #a78bfa; cursor: pointer; }
+    .user-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 14px; background: #1c1917; border: 1px solid #292524; border-radius: 10px; }
+    .user-email { font-size: 12px; color: #78716c; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+    .logout-btn { font-size: 12px; color: #a78bfa; background: none; border: none; cursor: pointer; white-space: nowrap; }
+    .loading-overlay { position: fixed; inset: 0; background: #0c0a09; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #57534e; z-index: 100; }
+    .empty-state { text-align: center; padding: 48px 0; font-size: 14px; color: #57534e; }
+
+    /* CHARTS */
+    .chart-controls { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .chart-controls button { font-size: 12px; padding: 6px 14px; border-radius: 999px; border: 1px solid #3a3633; background: none; color: #a8a29e; cursor: pointer; transition: all 0.2s; }
+    .chart-controls button.active { background: #7c3aed; border-color: #6d28d9; color: white; }
+    .chart-wrap { background: #1c1917; border: 1px solid #292524; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+    .chart-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: #a8a29e; margin-bottom: 14px; }
+    .chart-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #78716c; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .chart-zone-note { font-size: 11px; color: #57534e; margin-top: 10px; }
+
+    /* COMO FUNCIONA */
+    .info-section { margin-bottom: 32px; }
+    .info-section-title { font-size: 16px; font-weight: 500; color: #e7e5e4; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #292524; }
+    .info-card { background: #1c1917; border: 1px solid #292524; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+    .info-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .info-card-icon { font-size: 18px; }
+    .info-card-name { font-size: 14px; font-weight: 500; color: #e7e5e4; }
+    .info-card-desc { font-size: 13px; color: #a8a29e; line-height: 1.6; }
+    .alert-info-card { border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid; }
+    .alert-info-card.high { background: #2d0a1e; border-color: #9f1239; }
+    .alert-info-card.low { background: #0c1a2e; border-color: #1e3a5f; }
+    .alert-info-title { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+    .alert-info-card.high .alert-info-title { color: #fda4af; }
+    .alert-info-card.low .alert-info-title { color: #93c5fd; }
+    .alert-info-list { display: flex; flex-direction: column; gap: 6px; }
+    .alert-info-item { font-size: 13px; color: #a8a29e; display: flex; gap: 8px; }
+    .alert-threshold-note { font-size: 12px; color: #57534e; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); }
+    .info-note { background: #1c1917; border-left: 3px solid #7c3aed; border-radius: 0 10px 10px 0; padding: 12px 14px; font-size: 13px; color: #a8a29e; line-height: 1.7; margin-top: 8px; }
+    .info-note strong { color: #e7e5e4; }
+    .flow-steps { display: flex; flex-direction: column; gap: 0; }
+    .flow-step { display: flex; gap: 14px; padding-bottom: 20px; }
+    .flow-step:last-child { padding-bottom: 0; }
+    .flow-left { display: flex; flex-direction: column; align-items: center; }
+    .flow-num { width: 28px; height: 28px; border-radius: 50%; background: #292524; border: 1px solid #3a3633; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #a78bfa; flex-shrink: 0; }
+    .flow-line { width: 1px; flex: 1; background: #292524; margin-top: 6px; min-height: 16px; }
+    .flow-step:last-child .flow-line { display: none; }
+    .flow-content { padding-top: 4px; }
+    .flow-step-title { font-size: 14px; font-weight: 500; color: #e7e5e4; margin-bottom: 3px; }
+    .flow-step-desc { font-size: 13px; color: #a8a29e; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay" class="loading-overlay">Carregando...</div>
+
+<div id="main-container" style="display:none">
+  <div class="container">
+    <p class="eyebrow">Monitoramento</p>
+    <h1>Humor & Sono</h1>
+
+    <!-- AUTH -->
+    <div id="view-auth" style="display:none">
+      <p class="auth-title" id="auth-title">Entrar</p>
+      <div class="auth-box">
+        <div><label>Email</label><input type="email" id="auth-email" placeholder="seu@email.com" /></div>
+        <div><label>Senha</label><input type="password" id="auth-password" placeholder="••••••••" /></div>
+        <p class="auth-error" id="auth-error"></p>
+        <button class="save-btn" id="auth-submit-btn" onclick="authSubmit()">Entrar</button>
+      </div>
+      <p class="auth-switch" id="auth-switch">Não tem conta? <span onclick="toggleAuthMode()">Criar conta</span></p>
+    </div>
+
+    <!-- APP -->
+    <div id="view-app" style="display:none">
+      <div class="user-bar">
+        <span class="user-email" id="user-email-display"></span>
+        <button class="logout-btn" onclick="doLogout()">Sair</button>
+      </div>
+
+      <!-- HOJE -->
+      <div id="view-form" style="display:none">
+        <div id="alert-banner-low" style="display:none" class="alert-banner-low">🔵 <strong>Sinais de polo baixo.</strong> Considere entrar em contato com a Dra. Samantha.</div>
+        <div id="alert-banner" style="display:none" class="alert-banner">⚠️ <strong>Sinais de polo alto.</strong> Considere entrar em contato com a Dra. Samantha.</div>
+        <div class="section"><div class="section-box"><label>Data</label><input type="date" id="field-date" /></div></div>
+        <div class="section">
+          <p class="section-title">🌙 Sono</p>
+          <div class="section-box">
+            <div class="grid3">
+              <div><label>Dormi às</label><input type="time" id="field-sleepTime" oninput="calcHours()" /></div>
+              <div><label>Acordei às</label><input type="time" id="field-wakeTime" oninput="calcHours()" /></div>
+              <div><label>Total (h)</label><div id="field-sleepHours" class="hours-display empty">—</div></div>
+            </div>
+            <p class="field-label">Como acordei</p>
+            <div class="chip-group" id="wakeFeeling-group">
+              <button class="chip" onclick="selectChip('wakeFeeling',this,'Descansada')">Descansada</button>
+              <button class="chip" onclick="selectChip('wakeFeeling',this,'Cansada')">Cansada</button>
+              <button class="chip" onclick="selectChip('wakeFeeling',this,'Acelerada/agitada')">Acelerada/agitada</button>
+              <button class="chip" onclick="selectChip('wakeFeeling',this,'Outro')">Outro</button>
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <p class="section-title">😶 Humor</p>
+          <div class="section-box">
+            <p class="hint">1 = muito baixo · 5 = estável · 10 = muito elevado</p>
+            <label>Manhã</label><div class="range-wrap"><input type="range" min="1" max="10" value="5" id="humorManha" oninput="updateRange(this)"/><div class="range-labels"><span>1</span><span class="range-value" id="humorManha-val" style="color:#7c3aed">5</span><span>10</span></div></div>
+            <label>Tarde</label><div class="range-wrap"><input type="range" min="1" max="10" value="5" id="humorTarde" oninput="updateRange(this)"/><div class="range-labels"><span>1</span><span class="range-value" id="humorTarde-val" style="color:#7c3aed">5</span><span>10</span></div></div>
+            <label>Noite</label><div class="range-wrap"><input type="range" min="1" max="10" value="5" id="humorNoite" oninput="updateRange(this)"/><div class="range-labels"><span>1</span><span class="range-value" id="humorNoite-val" style="color:#7c3aed">5</span><span>10</span></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <p class="section-title">⚡ Energia</p>
+          <div class="section-box">
+            <p class="hint">1 = sem energia · 5 = normal · 10 = muito elevada</p>
+            <label>Manhã</label><div class="range-wrap"><input type="range" min="1" max="10" value="5" id="energiaManha" oninput="updateRange(this)"/><div class="range-labels"><span>1</span><span class="range-value" id="energiaManha-val" style="color:#7c3aed">5</span><span>10</span></div></div>
+            <label>Tarde</label><div class="range-wrap"><input type="range" min="1" max="10" value="5" id="energiaTarde" oninput="updateRange(this)"/><div class="range-labels"><span>1</span><span class="range-value" id="energiaTarde-val" style="color:#7c3aed">5</span><span>10</span></div></div>
+            <label>Noite</label><div class="range-wrap"><input type="range" min="1" max="10" value="5" id="energiaNoite" oninput="updateRange(this)"/><div class="range-labels"><span>1</span><span class="range-value" id="energiaNoite-val" style="color:#7c3aed">5</span><span>10</span></div></div>
+          </div>
+        </div>
+        <div class="section">
+          <p class="section-title">💗 Sinais físicos</p>
+          <div class="section-box">
+            <div class="toggle-row">
+              <button class="toggle off" id="heartToggle" onclick="toggleHeart()"><div class="toggle-thumb"></div></button>
+              <p class="field-label" style="margin:0">Coração acelerado?</p>
+            </div>
+            <div id="heart-details" style="display:none">
+              <label>Intensidade (1-10)</label>
+              <div class="range-wrap"><input type="range" min="1" max="10" value="5" id="heartIntensity" oninput="updateRange(this)"/><div class="range-labels"><span>1</span><span class="range-value" id="heartIntensity-val" style="color:#7c3aed">5</span><span>10</span></div></div>
+              <label style="margin-top:12px">Quando aconteceu</label>
+              <input type="text" id="field-heartWhen" placeholder="Ex: ao acordar, à tarde..." />
+              <div style="margin-bottom:12px"></div>
+            </div>
+            <label>Outros sintomas</label>
+            <input type="text" id="field-otherSymptoms" placeholder="Ex: dor de cabeça, tensão..." />
+          </div>
+        </div>
+        <div class="section">
+          <p class="section-title">💭 Pensamentos</p>
+          <div class="section-box">
+            <button class="option-btn" onclick="selectOption('thoughtSpeed',this,'Muito lentos')">Muito lentos</button>
+            <button class="option-btn" onclick="selectOption('thoughtSpeed',this,'Ritmo normal')">Ritmo normal</button>
+            <button class="option-btn" onclick="selectOption('thoughtSpeed',this,'Um pouco acelerados')">Um pouco acelerados</button>
+            <button class="option-btn" onclick="selectOption('thoughtSpeed',this,'Muito acelerados')">Muito acelerados</button>
+          </div>
+        </div>
+        <div class="section">
+          <p class="section-title">📝 Notas livres</p>
+          <div class="section-box"><textarea id="field-notes" rows="4" placeholder="Qualquer coisa que chamou atenção hoje..."></textarea></div>
+        </div>
+        <button class="save-btn" id="save-btn" onclick="saveEntry()">Salvar registro</button>
+        <p class="sync-status" id="sync-status"></p>
+      </div>
+
+      <!-- GRÁFICOS -->
+      <div id="view-charts" style="display:none">
+        <div class="chart-controls">
+          <button id="range-7" onclick="setRange(7)">7 dias</button>
+          <button id="range-30" class="active" onclick="setRange(30)">30 dias</button>
+          <button id="range-0" onclick="setRange(0)">Tudo</button>
+        </div>
+
+        <div class="chart-wrap">
+          <p class="chart-title">😶 Humor — média diária</p>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Humor</div>
+          </div>
+          <canvas id="chartHumor" height="160"></canvas>
+          <p class="chart-zone-note">Zonas: abaixo de 3 = polo baixo · acima de 7 = polo alto</p>
+        </div>
+
+        <div class="chart-wrap">
+          <p class="chart-title">⚡ Energia — média diária</p>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div>Energia</div>
+          </div>
+          <canvas id="chartEnergia" height="160"></canvas>
+          <p class="chart-zone-note">Zonas: abaixo de 3 = polo baixo · acima de 7 = polo alto</p>
+        </div>
+
+        <div class="chart-wrap">
+          <p class="chart-title">🌙 Sono — horas por noite</p>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#93c5fd"></div>Horas dormidas</div>
+          </div>
+          <canvas id="chartSono" height="160"></canvas>
+          <p class="chart-zone-note">Referência: abaixo de 6h pode indicar privação · acima de 10h pode indicar hipersonia</p>
+        </div>
+      </div>
+
+      <!-- HISTÓRICO -->
+      <div id="view-history" style="display:none">
+        <div id="history-list"></div>
+      </div>
+
+      <!-- DETALHE -->
+      <div id="view-detail" style="display:none">
+        <button class="detail-back" onclick="showView('history')">← Voltar</button>
+        <div id="detail-content"></div>
+        <div class="detail-actions">
+          <button class="edit-btn" onclick="editEntry()">✏️ Editar registro</button>
+          <button class="delete-btn" onclick="deleteEntry()">🗑</button>
+        </div>
+      </div>
+
+      <!-- COMO FUNCIONA -->
+      <div id="view-info" style="display:none">
+        <div class="info-section">
+          <p class="info-section-title">O que você registra</p>
+          <div class="info-card"><div class="info-card-header"><span class="info-card-icon">🌙</span><span class="info-card-name">Sono</span></div><p class="info-card-desc">Horário que dormiu e acordou — o total é calculado automaticamente. Inclui como você se sentiu ao acordar. Sono reduzido com sensação de disposição pode indicar hipomania; sono excessivo com cansaço pode indicar depressão.</p></div>
+          <div class="info-card"><div class="info-card-header"><span class="info-card-icon">😶</span><span class="info-card-name">Humor</span></div><p class="info-card-desc">Registrado três vezes ao dia em escala de 1 a 10. O app usa o valor mais extremo dos três períodos para avaliar alertas. 1 = muito baixo · 5 = estável · 10 = muito elevado.</p></div>
+          <div class="info-card"><div class="info-card-header"><span class="info-card-icon">⚡</span><span class="info-card-name">Energia</span></div><p class="info-card-desc">Também registrada três vezes ao dia. Energia e humor podem divergir — essa diferença é clinicamente relevante e aparece claramente nos gráficos.</p></div>
+          <div class="info-card"><div class="info-card-header"><span class="info-card-icon">💗</span><span class="info-card-name">Sinais físicos</span></div><p class="info-card-desc">Coração acelerado com intensidade e horário, mais campo livre para outros sintomas. Taquicardia ao acordar sem ansiedade associada pode ser sinal precoce de hipomania.</p></div>
+          <div class="info-card"><div class="info-card-header"><span class="info-card-icon">💭</span><span class="info-card-name">Pensamentos</span></div><p class="info-card-desc">Quatro opções: muito lentos, ritmo normal, um pouco acelerados, muito acelerados. Lentos contribuem para o alerta de polo baixo; muito acelerados contribuem para polo alto.</p></div>
+          <div class="info-card"><div class="info-card-header"><span class="info-card-icon">📝</span><span class="info-card-name">Notas livres</span></div><p class="info-card-desc">Qualquer coisa relevante do dia: eventos, sensações, efeitos percebidos de medicação. Aparece no histórico e na tela de detalhe.</p></div>
+        </div>
+
+        <div class="info-section">
+          <p class="info-section-title">Sistema de alertas</p>
+
+          <div class="alert-info-card high">
+            <p class="alert-info-title">⚠️ Polo alto — sinais de hipomania</p>
+            <div class="alert-info-list">
+              <div class="alert-info-item"><span>😶</span><span>Humor ≥ 7 em qualquer período do dia</span></div>
+              <div class="alert-info-item"><span>⚡</span><span>Energia ≥ 7 em qualquer período do dia</span></div>
+              <div class="alert-info-item"><span>💗</span><span>Coração acelerado com intensidade ≥ 6</span></div>
+              <div class="alert-info-item"><span>💭</span><span>Pensamentos muito acelerados</span></div>
+              <div class="alert-info-item"><span>🌙</span><span>Acordou acelerada/agitada</span></div>
+            </div>
+            <p class="alert-threshold-note">Aviso aparece com <strong style="color:#e7e5e4">3 ou mais</strong> sinais presentes no mesmo dia.</p>
+          </div>
+
+          <div class="alert-info-card low">
+            <p class="alert-info-title">🔵 Polo baixo — sinais de episódio depressivo</p>
+            <div class="alert-info-list">
+              <div class="alert-info-item"><span>😶</span><span>Humor ≤ 3 em qualquer período do dia</span></div>
+              <div class="alert-info-item"><span>⚡</span><span>Energia ≤ 3 em qualquer período do dia</span></div>
+              <div class="alert-info-item"><span>💭</span><span>Pensamentos muito lentos</span></div>
+              <div class="alert-info-item"><span>🌙</span><span>Sono ≥ 10 horas (hipersonia)</span></div>
+              <div class="alert-info-item"><span>🌙</span><span>Acordou cansada mesmo após dormir</span></div>
+            </div>
+            <p class="alert-threshold-note">Aviso aparece com <strong style="color:#e7e5e4">2 ou mais</strong> sinais — limiar menor porque sinais depressivos tendem a ser mais discretos.</p>
+          </div>
+
+          <div class="info-note"><strong>Os dois alertas podem aparecer juntos.</strong> Estados mistos são comuns no transtorno bipolar. O histórico mostra as tags correspondentes em cada card.</div>
+        </div>
+
+        <div class="info-section">
+          <p class="info-section-title">Como usar no dia a dia</p>
+          <div class="flow-steps">
+            <div class="flow-step"><div class="flow-left"><div class="flow-num">1</div><div class="flow-line"></div></div><div class="flow-content"><p class="flow-step-title">Pela manhã, ao acordar</p><p class="flow-step-desc">Preencha o sono, humor e energia da manhã e se houve coração acelerado.</p></div></div>
+            <div class="flow-step"><div class="flow-left"><div class="flow-num">2</div><div class="flow-line"></div></div><div class="flow-content"><p class="flow-step-title">À tarde</p><p class="flow-step-desc">Atualize humor e energia da tarde. Salve — o registro substitui o anterior para o mesmo dia.</p></div></div>
+            <div class="flow-step"><div class="flow-left"><div class="flow-num">3</div><div class="flow-line"></div></div><div class="flow-content"><p class="flow-step-title">À noite</p><p class="flow-step-desc">Complete humor e energia da noite, pensamentos, outros sintomas e notas livres.</p></div></div>
+            <div class="flow-step"><div class="flow-left"><div class="flow-num">4</div><div class="flow-line"></div></div><div class="flow-content"><p class="flow-step-title">Na consulta com a Dra. Samantha</p><p class="flow-step-desc">O histórico e os gráficos ficam disponíveis em qualquer dispositivo após login. Os cards com tags de alerta facilitam identificar os dias mais significativos.</p></div></div>
+          </div>
+          <div class="info-note" style="margin-top:20px"><strong>Os avisos são sugestões, não diagnósticos.</strong> O app é uma ferramenta de apoio ao acompanhamento clínico. Se sinais persistirem por 2 ou mais dias seguidos, entre em contato com a Dra. Samantha.</div>
+        </div>
+      </div>
+
+    </div><!-- /view-app -->
+  </div><!-- /container -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav" id="bottom-nav" style="display:none">
+    <button id="nav-form" onclick="showView('form')">
+      <span class="nav-icon">✏️</span>Hoje
+    </button>
+    <button id="nav-history" onclick="showView('history')">
+      <span class="nav-icon">📋</span>Histórico
+    </button>
+    <button id="nav-charts" onclick="showView('charts')">
+      <span class="nav-icon">📈</span>Gráficos
+    </button>
+    <button id="nav-info" onclick="showView('info')">
+      <span class="nav-icon">ℹ️</span>Guia
+    </button>
+  </nav>
+</div><!-- /main-container -->
+
+<script>
+  const SUPABASE_URL = 'https://jnkstrlfmahtfxmbirhp.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impua3N0cmxmbWFodGZ4bWJpcmhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxOTM1NTQsImV4cCI6MjA5Nzc2OTU1NH0.k6lyBfvGGRHrIvDgC71w69iQls_Mm2CHWwrc9yMaqjw';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const state = { wakeFeeling:'', thoughtSpeed:'', heartRace:false, currentDetailIndex:-1, entries:[], chartRange:30 };
+  let authMode = 'login';
+  let charts = {};
+
+  // ── INIT ──
+  async function init() {
+    const { data:{ session } } = await sb.auth.getSession();
+    document.getElementById('loading-overlay').style.display = 'none';
+    document.getElementById('main-container').style.display = 'block';
+    if (session) showApp(session.user); else showAuthView();
+    sb.auth.onAuthStateChange((_e, session) => { if (session) showApp(session.user); else showAuthView(); });
+  }
+
+  function showAuthView() {
+    document.getElementById('view-auth').style.display = 'block';
+    document.getElementById('view-app').style.display = 'none';
+    document.getElementById('bottom-nav').style.display = 'none';
+  }
+
+  async function showApp(user) {
+    document.getElementById('view-auth').style.display = 'none';
+    document.getElementById('view-app').style.display = 'block';
+    document.getElementById('bottom-nav').style.display = 'flex';
+    document.getElementById('user-email-display').textContent = user.email;
+    document.getElementById('field-date').value = new Date().toISOString().split('T')[0];
+    await loadEntries();
+    showView('form');
+  }
+
+  // ── AUTH ──
+  function toggleAuthMode() {
+    authMode = authMode === 'login' ? 'signup' : 'login';
+    document.getElementById('auth-title').textContent = authMode === 'login' ? 'Entrar' : 'Criar conta';
+    document.getElementById('auth-submit-btn').textContent = authMode === 'login' ? 'Entrar' : 'Criar conta';
+    document.getElementById('auth-switch').innerHTML = authMode === 'login'
+      ? 'Não tem conta? <span onclick="toggleAuthMode()">Criar conta</span>'
+      : 'Já tem conta? <span onclick="toggleAuthMode()">Entrar</span>';
+    document.getElementById('auth-error').style.display = 'none';
+  }
+
+  async function authSubmit() {
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const errEl = document.getElementById('auth-error');
+    const btn = document.getElementById('auth-submit-btn');
+    errEl.style.display = 'none'; btn.disabled = true; btn.textContent = '...';
+    let error;
+    if (authMode === 'login') ({ error } = await sb.auth.signInWithPassword({ email, password }));
+    else ({ error } = await sb.auth.signUp({ email, password }));
+    btn.disabled = false; btn.textContent = authMode === 'login' ? 'Entrar' : 'Criar conta';
+    if (error) { errEl.textContent = translateError(error.message); errEl.style.display = 'block'; }
+  }
+
+  function translateError(msg) {
+    if (msg.includes('Invalid login')) return 'Email ou senha incorretos.';
+    if (msg.includes('already registered')) return 'Este email já está cadastrado.';
+    if (msg.includes('Password should')) return 'A senha deve ter pelo menos 6 caracteres.';
+    if (msg.includes('valid email')) return 'Digite um email válido.';
+    return msg;
+  }
+
+  async function doLogout() { await sb.auth.signOut(); state.entries = []; }
+
+  // ── DATA ──
+  async function loadEntries() {
+    const { data, error } = await sb.from('registros').select('*').order('date', { ascending: false });
+    if (!error && data) state.entries = data.map(dbToLocal);
+  }
+
+  function localToDb(e) {
+    return { date:e.date, sleep_time:e.sleepTime||null, wake_time:e.wakeTime||null, sleep_hours:e.sleepHours||null, wake_feeling:e.wakeFeeling||null, humor_manha:e.humorManha, humor_tarde:e.humorTarde, humor_noite:e.humorNoite, energia_manha:e.energiaManha, energia_tarde:e.energiaTarde, energia_noite:e.energiaNoite, heart_race:e.heartRace, heart_intensity:e.heartIntensity, heart_when:e.heartWhen||null, other_symptoms:e.otherSymptoms||null, thought_speed:e.thoughtSpeed||null, notes:e.notes||null };
+  }
+
+  function dbToLocal(r) {
+    return { id:r.id, date:r.date, sleepTime:r.sleep_time, wakeTime:r.wake_time, sleepHours:r.sleep_hours, wakeFeeling:r.wake_feeling, humorManha:r.humor_manha, humorTarde:r.humor_tarde, humorNoite:r.humor_noite, energiaManha:r.energia_manha, energiaTarde:r.energia_tarde, energiaNoite:r.energia_noite, heartRace:r.heart_race, heartIntensity:r.heart_intensity, heartWhen:r.heart_when, otherSymptoms:r.other_symptoms, thoughtSpeed:r.thought_speed, notes:r.notes };
+  }
+
+  // ── VIEWS ──
+  function showView(v) {
+    ['form','charts','history','detail','info'].forEach(id => {
+      document.getElementById('view-'+id).style.display = v === id ? 'block' : 'none';
+    });
+    ['form','charts','history','info'].forEach(id => {
+      const btn = document.getElementById('nav-'+id);
+      if (btn) btn.className = (v === id || (v === 'detail' && id === 'history')) ? 'active' : '';
+    });
+    if (v === 'history') renderHistory();
+    if (v === 'charts') renderCharts();
+  }
+
+  // ── FORM ──
+  function calcHours() {
+    const s = document.getElementById('field-sleepTime').value;
+    const w = document.getElementById('field-wakeTime').value;
+    const el = document.getElementById('field-sleepHours');
+    if (s && w) {
+      const [sh,sm] = s.split(':').map(Number); const [wh,wm] = w.split(':').map(Number);
+      let sMin = sh*60+sm, wMin = wh*60+wm;
+      if (wMin <= sMin) wMin += 24*60;
+      el.textContent = ((wMin-sMin)/60).toFixed(1)+'h'; el.className = 'hours-display filled';
+    } else { el.textContent = '—'; el.className = 'hours-display empty'; }
+    checkAlerts();
+  }
+
+  function updateRange(el) {
+    const v = Number(el.value);
+    const valEl = document.getElementById(el.id+'-val');
+    if (!valEl) return;
+    valEl.textContent = v;
+    valEl.style.color = v <= 3 ? '#6b7280' : v <= 6 ? '#7c3aed' : '#db2777';
+    checkAlerts();
+  }
+
+  function selectChip(field, btn, val) {
+    document.querySelectorAll('#wakeFeeling-group .chip').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected'); state[field] = val; checkAlerts();
+  }
+
+  function selectOption(field, btn, val) {
+    btn.closest('.section-box').querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected'); state[field] = val; checkAlerts();
+  }
+
+  function toggleHeart() {
+    state.heartRace = !state.heartRace;
+    document.getElementById('heartToggle').className = 'toggle '+(state.heartRace?'on':'off');
+    document.getElementById('heart-details').style.display = state.heartRace ? 'block' : 'none';
+    checkAlerts();
+  }
+
+  function checkAlerts() {
+    const hm=+document.getElementById('humorManha').value, ht=+document.getElementById('humorTarde').value, hn=+document.getElementById('humorNoite').value;
+    const em=+document.getElementById('energiaManha').value, et=+document.getElementById('energiaTarde').value, en=+document.getElementById('energiaNoite').value;
+    const hi=+document.getElementById('heartIntensity').value;
+    const sleepH = parseFloat(document.getElementById('field-sleepHours').textContent) || 0;
+    const highCount = [hm>=7||ht>=7||hn>=7, em>=7||et>=7||en>=7, state.heartRace&&hi>=6, state.thoughtSpeed==='Muito acelerados', state.wakeFeeling==='Acelerada/agitada'].filter(Boolean).length;
+    const lowCount  = [hm<=3||ht<=3||hn<=3, em<=3||et<=3||en<=3, state.thoughtSpeed==='Muito lentos', sleepH>=10, state.wakeFeeling==='Cansada'].filter(Boolean).length;
+    document.getElementById('alert-banner').style.display     = highCount >= 3 ? 'block' : 'none';
+    document.getElementById('alert-banner-low').style.display = lowCount  >= 2 ? 'block' : 'none';
+  }
+
+  async function saveEntry() {
+    const syncEl = document.getElementById('sync-status');
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true; btn.textContent = 'Salvando...'; syncEl.textContent = ''; syncEl.className = 'sync-status';
+    const sleepH = document.getElementById('field-sleepHours').textContent.replace('h','').replace('—','');
+    const entry = { date:document.getElementById('field-date').value, sleepTime:document.getElementById('field-sleepTime').value, wakeTime:document.getElementById('field-wakeTime').value, sleepHours:sleepH, wakeFeeling:state.wakeFeeling, humorManha:+document.getElementById('humorManha').value, humorTarde:+document.getElementById('humorTarde').value, humorNoite:+document.getElementById('humorNoite').value, energiaManha:+document.getElementById('energiaManha').value, energiaTarde:+document.getElementById('energiaTarde').value, energiaNoite:+document.getElementById('energiaNoite').value, heartRace:state.heartRace, heartIntensity:+document.getElementById('heartIntensity').value, heartWhen:document.getElementById('field-heartWhen').value, otherSymptoms:document.getElementById('field-otherSymptoms').value, thoughtSpeed:state.thoughtSpeed, notes:document.getElementById('field-notes').value };
+    const { data:{ user } } = await sb.auth.getUser();
+    const { error } = await sb.from('registros').upsert({...localToDb(entry), user_id:user.id}, { onConflict:'user_id,date' });
+    btn.disabled = false; btn.textContent = 'Salvar registro';
+    if (error) { syncEl.textContent = '✗ Erro: '+error.message; syncEl.className = 'sync-status err'; }
+    else { syncEl.textContent = '✓ Salvo'; syncEl.className = 'sync-status ok'; await loadEntries(); setTimeout(()=>{ syncEl.textContent=''; }, 3000); }
+  }
+
+  // ── ALERTS ──
+  function alertCount(e) {
+    const high = [e.humorManha>=7||e.humorTarde>=7||e.humorNoite>=7, e.energiaManha>=7||e.energiaTarde>=7||e.energiaNoite>=7, e.heartRace&&e.heartIntensity>=6, e.thoughtSpeed==='Muito acelerados', e.wakeFeeling==='Acelerada/agitada'].filter(Boolean).length;
+    const low  = [e.humorManha<=3||e.humorTarde<=3||e.humorNoite<=3, e.energiaManha<=3||e.energiaTarde<=3||e.energiaNoite<=3, e.thoughtSpeed==='Muito lentos', parseFloat(e.sleepHours)>=10, e.wakeFeeling==='Cansada'].filter(Boolean).length;
+    return { high, low };
+  }
+
+  // ── HISTORY ──
+  function renderHistory() {
+    const el = document.getElementById('history-list');
+    if (!state.entries.length) { el.innerHTML = '<div class="empty-state">Nenhum registro ainda.</div>'; return; }
+    el.innerHTML = state.entries.map((e,i) => {
+      const a = alertCount(e);
+      const cardClass = (a.high>=3 && a.low>=2) ? 'alert-both' : a.high>=3 ? 'alert-high' : a.low>=2 ? 'alert-low' : '';
+      const tags = [(a.high>=3 ? '<span class="tag-high">⚠️ polo alto</span>' : ''), (a.low>=2 ? '<span class="tag-low">🔵 polo baixo</span>' : '')].filter(Boolean).join('');
+      return `<div class="history-card ${cardClass}" onclick="showDetail(${i})">
+        <div class="history-header"><span class="history-date">${e.date}</span><span class="history-alert">${tags}</span></div>
+        <div class="history-stats"><span>Sono: ${e.sleepHours||'—'}h</span><span>Humor: ${e.humorManha}/${e.humorTarde}/${e.humorNoite}</span><span>Energia: ${e.energiaManha}/${e.energiaTarde}/${e.energiaNoite}</span></div>
+        ${e.notes ? `<p class="history-notes">${e.notes}</p>` : ''}
+        <p class="history-chevron">Ver detalhes →</p>
+      </div>`;
+    }).join('');
+  }
+
+  function valColor(v) { return v<=3?'low':v<=6?'mid':'high'; }
+
+  function showDetail(index) {
+    state.currentDetailIndex = index;
+    const e = state.entries[index]; if (!e) return;
+    const a = alertCount(e);
+    const alertHtml = [(a.high>=3 ? '<span style="display:inline-block;background:#2d0a1e;border:1px solid #9f1239;color:#fb7185;font-size:11px;padding:3px 10px;border-radius:999px">⚠️ Polo alto</span>' : ''), (a.low>=2 ? '<span style="display:inline-block;background:#0c1a2e;border:1px solid #1e3a5f;color:#93c5fd;font-size:11px;padding:3px 10px;border-radius:999px;margin-left:6px">🔵 Polo baixo</span>' : '')].filter(Boolean).join('');
+    document.getElementById('detail-content').innerHTML = `
+      ${alertHtml ? `<div style="margin-bottom:16px">${alertHtml}</div>` : ''}
+      <p class="detail-date">${e.date}</p><p class="detail-subtitle">Registro completo</p>
+      <div class="detail-section"><p class="detail-section-title">🌙 Sono</p><div class="detail-box">
+        <div class="detail-row"><span class="detail-key">Dormi às</span><span class="detail-val">${e.sleepTime||'—'}</span></div>
+        <div class="detail-row"><span class="detail-key">Acordei às</span><span class="detail-val">${e.wakeTime||'—'}</span></div>
+        <div class="detail-row"><span class="detail-key">Total</span><span class="detail-val">${e.sleepHours?e.sleepHours+'h':'—'}</span></div>
+        <div class="detail-row"><span class="detail-key">Como acordei</span><span class="detail-val ${e.wakeFeeling==='Acelerada/agitada'?'high':e.wakeFeeling==='Cansada'?'low':''}">${e.wakeFeeling||'—'}</span></div>
+      </div></div>
+      <div class="detail-section"><p class="detail-section-title">😶 Humor</p><div class="detail-box">
+        <div class="detail-row"><span class="detail-key">Manhã</span><span class="detail-val ${valColor(e.humorManha)}">${e.humorManha}</span></div>
+        <div class="detail-row"><span class="detail-key">Tarde</span><span class="detail-val ${valColor(e.humorTarde)}">${e.humorTarde}</span></div>
+        <div class="detail-row"><span class="detail-key">Noite</span><span class="detail-val ${valColor(e.humorNoite)}">${e.humorNoite}</span></div>
+      </div></div>
+      <div class="detail-section"><p class="detail-section-title">⚡ Energia</p><div class="detail-box">
+        <div class="detail-row"><span class="detail-key">Manhã</span><span class="detail-val ${valColor(e.energiaManha)}">${e.energiaManha}</span></div>
+        <div class="detail-row"><span class="detail-key">Tarde</span><span class="detail-val ${valColor(e.energiaTarde)}">${e.energiaTarde}</span></div>
+        <div class="detail-row"><span class="detail-key">Noite</span><span class="detail-val ${valColor(e.energiaNoite)}">${e.energiaNoite}</span></div>
+      </div></div>
+      <div class="detail-section"><p class="detail-section-title">💗 Sinais físicos</p><div class="detail-box">
+        <div class="detail-row"><span class="detail-key">Coração acelerado</span><span class="detail-val ${e.heartRace?'high':''}">${e.heartRace?'Sim':'Não'}</span></div>
+        ${e.heartRace?`<div class="detail-row"><span class="detail-key">Intensidade</span><span class="detail-val ${valColor(e.heartIntensity)}">${e.heartIntensity}/10</span></div><div class="detail-row"><span class="detail-key">Quando</span><span class="detail-val">${e.heartWhen||'—'}</span></div>`:''}
+        <div class="detail-row"><span class="detail-key">Outros sintomas</span><span class="detail-val">${e.otherSymptoms||'—'}</span></div>
+      </div></div>
+      <div class="detail-section"><p class="detail-section-title">💭 Pensamentos</p><div class="detail-box">
+        <div class="detail-row"><span class="detail-key">Ritmo</span><span class="detail-val ${e.thoughtSpeed==='Muito acelerados'?'high':e.thoughtSpeed==='Muito lentos'?'low':''}">${e.thoughtSpeed||'—'}</span></div>
+      </div></div>
+      ${e.notes?`<div class="detail-section"><p class="detail-section-title">📝 Notas</p><div class="detail-box"><p class="detail-notes-text">${e.notes}</p></div></div>`:''}
+    `;
+    showView('detail');
+  }
+
+  function editEntry() {
+    const e = state.entries[state.currentDetailIndex]; if (!e) return;
+    loadEntryIntoForm(e); showView('form'); window.scrollTo(0,0);
+  }
+
+  async function deleteEntry() {
+    const e = state.entries[state.currentDetailIndex];
+    if (!e || !confirm('Excluir este registro?')) return;
+    const { error } = await sb.from('registros').delete().eq('id', e.id);
+    if (!error) { await loadEntries(); showView('history'); }
+    else alert('Erro ao excluir: '+error.message);
+  }
+
+  function loadEntryIntoForm(e) {
+    state.wakeFeeling = e.wakeFeeling||''; state.thoughtSpeed = e.thoughtSpeed||''; state.heartRace = !!e.heartRace;
+    document.getElementById('field-date').value = e.date||'';
+    document.getElementById('field-sleepTime').value = e.sleepTime||'';
+    document.getElementById('field-wakeTime').value = e.wakeTime||'';
+    calcHours();
+    document.querySelectorAll('#wakeFeeling-group .chip').forEach(b => b.classList.toggle('selected', b.textContent.trim()===e.wakeFeeling));
+    ['humorManha','humorTarde','humorNoite','energiaManha','energiaTarde','energiaNoite'].forEach(id => { const el=document.getElementById(id); if(el){el.value=e[id]||5;updateRange(el);} });
+    document.getElementById('heartToggle').className = 'toggle '+(state.heartRace?'on':'off');
+    document.getElementById('heart-details').style.display = state.heartRace?'block':'none';
+    if (state.heartRace) { const hi=document.getElementById('heartIntensity'); hi.value=e.heartIntensity||5; updateRange(hi); document.getElementById('field-heartWhen').value=e.heartWhen||''; }
+    document.getElementById('field-otherSymptoms').value = e.otherSymptoms||'';
+    document.querySelectorAll('#view-form .section-box .option-btn').forEach(b => b.classList.toggle('selected', b.textContent.trim()===e.thoughtSpeed));
+    document.getElementById('field-notes').value = e.notes||'';
+    checkAlerts();
+  }
+
+  // ── CHARTS ──
+  function setRange(days) {
+    state.chartRange = days;
+    document.querySelectorAll('.chart-controls button').forEach(b => b.classList.remove('active'));
+    document.getElementById('range-'+(days===0?'0':days)).classList.add('active');
+    renderCharts();
+  }
+
+  function getFilteredEntries() {
+    const sorted = [...state.entries].sort((a,b) => a.date.localeCompare(b.date));
+    if (state.chartRange === 0) return sorted;
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - state.chartRange);
+    const cutStr = cutoff.toISOString().split('T')[0];
+    return sorted.filter(e => e.date >= cutStr);
+  }
+
+  function makeChartConfig(labels, data, color, yMin, yMax, zones) {
+    const annotations = {};
+    if (zones) {
+      annotations.lowZone = { type:'box', yMin:yMin, yMax:3, backgroundColor:'rgba(30,58,95,0.15)', borderWidth:0 };
+      annotations.highZone = { type:'box', yMin:7, yMax:yMax, backgroundColor:'rgba(45,10,30,0.15)', borderWidth:0 };
+      annotations.lowLine = { type:'line', yMin:3, yMax:3, borderColor:'rgba(147,197,253,0.3)', borderWidth:1, borderDash:[4,4] };
+      annotations.highLine = { type:'line', yMin:7, yMax:7, borderColor:'rgba(253,164,175,0.3)', borderWidth:1, borderDash:[4,4] };
+    }
+    return {
+      type: 'line',
+      data: { labels, datasets: [{ data, borderColor: color, backgroundColor: color+'22', fill: true, tension: 0.35, pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: color, borderWidth: 2 }] },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        scales: {
+          x: { ticks: { color:'#57534e', font:{size:10}, maxTicksLimit:8, maxRotation:0 }, grid: { color:'#1c1917' } },
+          y: { min:yMin, max:yMax, ticks:{ color:'#57534e', font:{size:10}, stepSize:1 }, grid:{ color:'#292524' } }
+        },
+        plugins: { legend:{display:false}, tooltip:{ backgroundColor:'#1c1917', borderColor:'#3a3633', borderWidth:1, titleColor:'#f5f5f4', bodyColor:'#a8a29e', padding:10 } }
+      }
+    };
+  }
+
+  function renderCharts() {
+    const entries = getFilteredEntries();
+    if (!entries.length) return;
+
+    const labels = entries.map(e => e.date.slice(5));
+    const humorAvg = entries.map(e => +((e.humorManha + e.humorTarde + e.humorNoite)/3).toFixed(1));
+    const energiaAvg = entries.map(e => +((e.energiaManha + e.energiaTarde + e.energiaNoite)/3).toFixed(1));
+    const sono = entries.map(e => parseFloat(e.sleepHours)||null);
+
+    const draws = [
+      { id:'chartHumor',  data:humorAvg,   color:'#a78bfa', yMin:0, yMax:10, zones:true },
+      { id:'chartEnergia',data:energiaAvg, color:'#34d399', yMin:0, yMax:10, zones:true },
+      { id:'chartSono',   data:sono,       color:'#93c5fd', yMin:0, yMax:14, zones:false },
+    ];
+
+    draws.forEach(({ id, data, color, yMin, yMax, zones }) => {
+      const canvas = document.getElementById(id);
+      if (charts[id]) { charts[id].destroy(); }
+      charts[id] = new Chart(canvas, makeChartConfig(labels, data, color, yMin, yMax, zones));
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>
